@@ -140,6 +140,7 @@ the icon is missing.
 | `build-installer.ps1` | Windows publish + installer build |
 | `build-mac.ps1` | macOS publish + `.app` bundles |
 | `CHANGELOG.md` | What changed in each version |
+| `LICENSE` | MIT license |
 | `backup-wpf\` | The previous Windows-only WPF version (v1), kept for reference. Not built. |
 
 ## Troubleshooting
@@ -161,3 +162,7 @@ uses. It is undocumented and may change without notice.
 
 Claude Quota is an unofficial community project. It is not affiliated with or endorsed by
 Anthropic. "Claude" is a trademark of Anthropic.
+
+## License
+
+[MIT](LICENSE)
