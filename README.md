@@ -5,6 +5,8 @@ left: the 5-hour session limit, the weekly limit, and extra-usage credits.
 
 It sits as a translucent "soap bubble" pill docked to a screen edge. Hover it to see details.
 
+What changed in each version: [CHANGELOG.md](CHANGELOG.md).
+
 ## Features
 
 - **Always on top.** Stays above other windows. It is hidden from the taskbar and Alt+Tab on
@@ -137,6 +139,7 @@ the icon is missing.
 | `installer\ClaudeQuota.Installer.wixproj` | WiX SDK project |
 | `build-installer.ps1` | Windows publish + installer build |
 | `build-mac.ps1` | macOS publish + `.app` bundles |
+| `CHANGELOG.md` | What changed in each version |
 | `backup-wpf\` | The previous Windows-only WPF version (v1), kept for reference. Not built. |
 
 ## Troubleshooting

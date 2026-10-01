@@ -28,6 +28,7 @@ dotnet build -c Release                  # quick compile check
   - Reinstall test: `msiexec /i dist\ClaudeQuota-Setup.msi /qn /l*v %TEMP%\cq.log`, then uninstall
     with `/x`.
   - Bump the version for every MSI. `MajorUpgrade` only upgrades when the version is higher.
+  - Add an entry to `CHANGELOG.md` (user-facing wording) for every new version.
 - **macOS.** `build-mac.ps1` cross-builds from Windows.
   - Each archive contains `Claude Quota.app/Contents/{Info.plist, MacOS/ClaudeQuota, Resources/app.icns}`.
     `Info.plist` sets `LSUIElement` (no Dock icon).
