@@ -20,7 +20,7 @@ namespace Quota;
 
 public partial class MainWindow : Window
 {
-    // Connect over IPv4 first: on this network the IPv6 attempt stalls ~21 s before falling back.
+    // Connect over IPv4 first: on some networks the IPv6 attempt stalls ~21 s before falling back.
     static readonly HttpClient Http = new(new SocketsHttpHandler
     {
         ConnectCallback = async (ctx, ct) =>

@@ -7,10 +7,11 @@ way, and how to verify changes.
 
 An Avalonia 12 (.NET 10, `net10.0`) always-on-top widget for **Windows and macOS** that shows Claude
 usage limits. It is one window with all logic in `MainWindow.axaml(.cs)`. Keep it that way unless it
-grows a lot. The user asked for **simple, not over-engineered**.
+grows a lot. Prefer **simple, not over-engineered** solutions.
 
-v1 was Windows-only WPF. It is kept in `backup-wpf\` (sources plus the v1 MSI), which is excluded
-from the build.
+v1 was Windows-only WPF. Its sources are kept in `backup-wpf\`, which is excluded from the build.
+
+Personal, machine-specific notes (if any) are in `CLAUDE.local.md`, which is not committed.
 
 ## Build / run / ship
 
@@ -90,8 +91,8 @@ dotnet build -c Release                  # quick compile check
   film and rim brushes.
   - Avalonia `Animation` can't target a brush's transform: it throws `InvalidCastException` to
     `Visual`.
-- **Data.** `RefreshAsync()` runs every 5 min (and on a click without a drag) and gets the token via `ReadCredentials()` (on a worker
-  thread).
+- **Data.** `RefreshAsync()` runs every 5 min (and on a click without a drag). It gets the token via
+  `ReadCredentials()` on a worker thread.
   - macOS: `security find-generic-password -s "Claude Code-credentials" -w` (mac), falling back to
     the file.
   - Windows: `~/.claude/.credentials.json`.
@@ -111,16 +112,14 @@ dotnet build -c Release                  # quick compile check
 
 ## Gotchas learned (do not regress these)
 
-- **The network stalls on IPv6.** On the user's network the first .NET connection stalls about 21 s
-  trying IPv6. The `HttpClient` uses a `SocketsHttpHandler.ConnectCallback` that tries IPv4 first.
-  Keep it.
-- **The locale is Norwegian.** It uses a decimal comma. Always use `CultureInfo.InvariantCulture`
-  when writing or parsing persisted numbers. A bug came from `"973,6,20"`.
-- **Mixed-DPI multi-monitor.** The user has a primary 1920×1080 at 125% and a second 5120×1440 at
-  100%, placed at physical (1920,-886).
+- **IPv6 can stall.** On some networks the first .NET connection stalls about 21 s trying IPv6. The
+  `HttpClient` uses a `SocketsHttpHandler.ConnectCallback` that tries IPv4 first. Keep it.
+- **Locales with a decimal comma.** Always use `CultureInfo.InvariantCulture` when writing or
+  parsing persisted numbers. A bug came from `"973,6,20"`.
+- **Mixed-DPI multi-monitor.** Tested with a 125% primary screen and a 100% second screen placed
+  above-right of it (negative Y).
   - Moving to a monitor with different DPI makes Windows apply the suggested rect.
     `ScalingChanged` re-docks unless a drag is in progress (`_pressed`).
-  - Verified: dragging between the two monitors, and top, bottom and right edges.
 - **Windows minimum window height.** Avalonia's default `WM_WINDOWPOSCHANGING` handling forced
   47 px (at 125%) on the 45 px pill, which pushed a bottom-docked pill into the taskbar. A
   `Win32Properties.AddWndProcHookCallback` hook marks `WM_WINDOWPOSCHANGING` handled for resizes.
@@ -130,9 +129,8 @@ dotnet build -c Release                  # quick compile check
   - Use HKCU registry key paths and `RemoveFolder`.
   - A component with a file plus a registry key path needs an explicit `Guid`.
   - ICE91 is suppressed.
-- **Git.** The repo is `https://github.com/posmikael/ClaudeQuota` (branch `main`) and uses a repo-local
-  identity, `the repo owner`; the global git config is a work email. The user has asked to
-  "return to how it was" before, so commit before a large redesign.
+- **Git.** The repo is `https://github.com/posmikael/ClaudeQuota` (branch `main`). Commit before a
+  large redesign, so it is easy to go back.
 - **Avalonia 12 renames.** `SystemDecorations` is now `WindowDecorations`.
 
 ## Verifying UI changes (how this was tested)
@@ -144,14 +142,13 @@ dotnet build -c Release                  # quick compile check
 - `Process.MainWindowHandle` is 0 for this tool window. Find the HWND with `EnumWindows` filtered by
   PID, then read `GetWindowRect`.
 - Hover and drag tests use `SetCursorPos` plus `mouse_event` (down=2, up=4, right down/up=8/16).
-- **The user is often at the machine.** Synthetic mouse moves hijack their cursor, and their own
-  cursor can trigger hover during a test. Keep such tests short and re-check the state.
+- Synthetic mouse moves take over the real cursor, and a real cursor can trigger hover during a
+  test. Keep such tests short and re-check the state.
 - PowerShell tool: one `Add-Type` per process. Put multi-step Win32 probes in a script file in the
   scratchpad.
 
-## User preferences
+## Conventions
 
-- Communicates in Russian (sometimes English). Docs and code comments are in English.
-- Wants simple, practical solutions. Design direction so far: Apple-like, a translucent "soap
-  bubble" look, a notch-style pill docked to screen edges.
-- Wants the app usable by friends on macOS.
+- Docs and code comments are in English.
+- Design direction: Apple-like, a translucent "soap bubble" look, a notch-style pill docked to
+  screen edges.

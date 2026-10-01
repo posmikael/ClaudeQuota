@@ -8,3 +8,4 @@ installer/obj/
 *.user
 .vs/
 *.msi
+CLAUDE.local.md

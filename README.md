@@ -103,10 +103,10 @@ restores Avalonia and WiX automatically. Both builds below run on Windows.
 dotnet run -c Release
 
 # Windows installer -> dist\ClaudeQuota-Setup.msi
-.\build-installer.ps1 -Version 2.0.2
+.\build-installer.ps1 -Version x.y.z
 
 # macOS apps -> dist\ClaudeQuota-macOS-arm64.tar.gz and -x64.tar.gz
-.\build-mac.ps1 -Version 2.0.2
+.\build-mac.ps1 -Version x.y.z
 ```
 
 Bump `-Version` for every release. MSI upgrades only replace an installed copy when the version is
@@ -158,3 +158,6 @@ the icon is missing.
 
 Usage comes from `GET https://api.anthropic.com/api/oauth/usage`, the endpoint Claude Code itself
 uses. It is undocumented and may change without notice.
+
+Claude Quota is an unofficial community project. It is not affiliated with or endorsed by
+Anthropic. "Claude" is a trademark of Anthropic.
