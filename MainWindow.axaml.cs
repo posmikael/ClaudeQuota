@@ -141,6 +141,7 @@ public partial class MainWindow : Window
         _pressed = false;
         e.Pointer.Capture(null);
         if (_moved) Snap();
+        else _ = RefreshAsync(true);   // a click without a drag refreshes
     }
 
     bool PointerOverPill()
@@ -388,11 +389,13 @@ public partial class MainWindow : Window
 
     // ---- Data ----
     bool _refreshing;
+    DateTime? _updated;   // time of the last successful refresh
 
-    async Task RefreshAsync()
+    async Task RefreshAsync(bool manual = false)
     {
         if (_refreshing) return;   // e.g. a Keychain prompt is still waiting for an answer
         _refreshing = true;
+        if (manual) StatusText.Text = "Updating…";
         try
         {
             using var cred = JsonDocument.Parse(await Task.Run(ReadCredentials));
@@ -404,8 +407,8 @@ public partial class MainWindow : Window
             var resp = await Http.SendAsync(req);
             if (!resp.IsSuccessStatusCode)
             {
-                SetStatus(false, resp.StatusCode == System.Net.HttpStatusCode.Unauthorized
-                    ? "Login expired - run Claude Code once." : $"HTTP {(int)resp.StatusCode}");
+                Fail(resp.StatusCode == System.Net.HttpStatusCode.Unauthorized
+                    ? "Login expired - run Claude Code once." : $"HTTP {(int)resp.StatusCode}", $"HTTP {(int)resp.StatusCode}");
                 return;
             }
             using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
@@ -415,9 +418,12 @@ public partial class MainWindow : Window
             Summary.Text = $"{Pct(session)}  ·  {Pct(week)}";
             VSession.Text = Pct(session); VWeek.Text = Pct(week);
             ShowExtra(root);
-            SetStatus(true, $"Updated {DateTime.Now:HH:mm}");
+            _updated = DateTime.Now;
+            SetStatus(true, $"Updated {_updated:HH:mm}", "Click to refresh");
         }
-        catch (Exception ex) { SetStatus(false, ex.Message); }
+        // Network errors read like "...(api.anthropic.com:443)"; show something short and keep the full text in the tooltip.
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException) { Fail("No connection", ex.Message); }
+        catch (Exception ex) { Fail(ex.Message, ex.Message); }
         finally { _refreshing = false; }
     }
 
@@ -439,12 +445,17 @@ public partial class MainWindow : Window
 
     static string Pct(double? v) => v is double d ? $"{d:0}%" : "–";
 
-    void SetStatus(bool ok, string text)
+    void SetStatus(bool ok, string text, string tip)
     {
         FillStatus.Height = ok ? SquareSize : 0;
         StatusText.Text = text;
         ToolTip.SetTip(SqStatus, text);
+        ToolTip.SetTip(StatusText, tip);
     }
+
+    // The data on screen stays from the last good refresh, so say how old it is.
+    void Fail(string text, string detail) =>
+        SetStatus(false, _updated is DateTime t ? $"{text} · updated {t:HH:mm}" : text, detail + Environment.NewLine + "Click to retry");
 
     // Returns percent left, and fills the ring, labels and the matching square.
     static double? ShowLimit(JsonElement root, string key, Avalonia.Controls.Shapes.Path arc, TextBlock pct, TextBlock reset, Border fill)
