@@ -1,0 +1,10 @@
+bin/
+obj/
+publish/
+dist/
+installer/bin/
+installer/obj/
+*.wixpdb
+*.user
+.vs/
+*.msi
