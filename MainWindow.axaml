@@ -16,7 +16,7 @@
       <Setter Property="Height" Value="11"/>
     </Style>
     <Style Selector="TextBlock.small">
-      <Setter Property="Foreground" Value="#8E8E93"/><Setter Property="FontSize" Value="10"/>
+      <Setter Property="Foreground" Value="#D1D1D6"/><Setter Property="FontSize" Value="10"/>
       <Setter Property="HorizontalAlignment" Value="Center"/>
     </Style>
     <Style Selector="Canvas.spark > Rectangle">
@@ -38,6 +38,7 @@
       <Transitions>
         <DoubleTransition Property="Width" Duration="0:0:0.2" Easing="CubicEaseOut"/>
         <DoubleTransition Property="Height" Duration="0:0:0.2" Easing="CubicEaseOut"/>
+        <BrushTransition Property="Background" Duration="0:0:0.2" Easing="CubicEaseOut"/>
       </Transitions>
     </Border.Transitions>
     <Border.BorderBrush>
@@ -163,9 +164,9 @@
           <TextBlock x:Name="WeekReset" Classes="small"/>
         </StackPanel>
         <StackPanel x:Name="DExtra" Grid.Column="2" VerticalAlignment="Center" Margin="8,0,0,0">
-          <TextBlock Text="Extra usage" Foreground="#8E8E93" FontSize="10"/>
+          <TextBlock Text="Extra usage" Foreground="#D1D1D6" FontSize="10"/>
           <TextBlock x:Name="ExtraText" Foreground="White" FontSize="13" FontWeight="SemiBold" Margin="0,1,0,8"/>
-          <TextBlock x:Name="StatusText" Text="Loading…" Foreground="#8E8E93" FontSize="10" TextWrapping="Wrap"/>
+          <TextBlock x:Name="StatusText" Text="Loading…" Foreground="#D1D1D6" FontSize="10" TextWrapping="Wrap"/>
         </StackPanel>
       </Grid>
     </Grid>

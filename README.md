@@ -101,10 +101,10 @@ restores Avalonia and WiX automatically. Both builds below run on Windows.
 dotnet run -c Release
 
 # Windows installer -> dist\ClaudeQuota-Setup.msi
-.\build-installer.ps1 -Version 2.0.1
+.\build-installer.ps1 -Version 2.0.2
 
 # macOS apps -> dist\ClaudeQuota-macOS-arm64.tar.gz and -x64.tar.gz
-.\build-mac.ps1 -Version 2.0.1
+.\build-mac.ps1 -Version 2.0.2
 ```
 
 Bump `-Version` for every release. MSI upgrades only replace an installed copy when the version is

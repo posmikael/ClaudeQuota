@@ -328,6 +328,8 @@ public partial class MainWindow : Window
         if (open) Place(true);   // grow the window first so the pill has room
         Pill.Width = open ? ExpandedW : CollapsedW;
         Pill.Height = open ? ExpandedH : CollapsedH;
+        // Darker tint while expanded so the small detail text stays readable over light windows
+        Pill.Background = new SolidColorBrush(open ? Color.FromArgb(0xA0, 0, 0, 0) : Color.FromArgb(0x50, 0, 0, 0));
         Details.Opacity = open ? 1 : 0;
         // On the side edges the collapsed strip uses the vertical header; expanded always shows the full layout
         Header.Opacity = open || !Vertical ? 1 : 0;
