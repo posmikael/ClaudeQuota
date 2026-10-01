@@ -271,20 +271,31 @@ public partial class MainWindow : Window
     }
 
     // Size and place the window around the pill: collapsed, or the expanded size while hovered.
+    // On Windows the window always has the expanded size and a window region trims it (and its clicks) to the
+    // collapsed pill: resizing a DirectComposition window shows one stale frame of the old content at the new
+    // origin, which made the pill blink sideways on every hover.
     void Place(bool open)
     {
-        double w = open ? ExpandedW : CollapsedW, h = open ? ExpandedH : CollapsedH;
+        bool win = OperatingSystem.IsWindows();
+        double w = open || win ? ExpandedW : CollapsedW, h = open || win ? ExpandedH : CollapsedH;
         int pw = (int)Math.Round(w * _unit), ph = (int)Math.Round(h * _unit);
         int x = Pill.HorizontalAlignment == HorizontalAlignment.Right ? _pill.Right - pw : _pill.X;
         int y = Pill.VerticalAlignment == VerticalAlignment.Bottom ? _pill.Bottom - ph : _pill.Y;
         // On Windows move and resize in one call; separate moves would flash the pill at a wrong spot.
-        if (OperatingSystem.IsWindows() && TryGetPlatformHandle()?.Handle is IntPtr hwnd)
+        if (win && TryGetPlatformHandle()?.Handle is IntPtr hwnd)
+        {
             SetWindowPos(hwnd, IntPtr.Zero, x, y, pw, ph, 0x0004 | 0x0010);   // NOZORDER | NOACTIVATE
+            int rx = open ? 0 : _pill.X - x, ry = open ? 0 : _pill.Y - y;
+            int rw = open ? pw : _pill.Width, rh = open ? ph : _pill.Height;
+            SetWindowRgn(hwnd, CreateRectRgn(rx, ry, rx + rw, ry + rh), true);   // the window owns the region now
+        }
         Width = w; Height = h;
         Position = new PixelPoint(x, y);
     }
 
     [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
+    [DllImport("user32.dll")] static extern int SetWindowRgn(IntPtr h, IntPtr rgn, bool redraw);
+    [DllImport("gdi32.dll")] static extern IntPtr CreateRectRgn(int l, int t, int r, int b);
 
     // Details: Session | Week | Extra side by side, or stacked top-to-bottom along a side edge.
     void LayoutDetails()
@@ -321,7 +332,7 @@ public partial class MainWindow : Window
         // On the side edges the collapsed strip uses the vertical header; expanded always shows the full layout
         Header.Opacity = open || !Vertical ? 1 : 0;
         VHeader.Opacity = !open && Vertical ? 1 : 0;
-        // Shrink the window once the pill has collapsed, so the space around it doesn't catch clicks
+        // Shrink the window (its region on Windows) once the pill has collapsed, so the space around it doesn't catch clicks
         if (!open) DispatcherTimer.RunOnce(() => { if (!_open) Place(false); }, TimeSpan.FromMilliseconds(220));
     }
 

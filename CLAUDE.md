@@ -49,8 +49,12 @@ dotnet build -c Release                  # quick compile check
   - `Place(open)` sizes and positions it, anchored at the corner the pill grows from.
   - The pill animates `Width`/`Height` inside (XAML `DoubleTransition`, 200 ms cubic ease-out).
   - On collapse, the window shrinks 220 ms later, after the animation.
+  - **On Windows the window is never resized on hover.** It always has the expanded size, and
+    `SetWindowRgn` trims it (drawing and clicks) to the collapsed pill or the full window. Resizing
+    plus moving a DirectComposition window shows one stale frame with the old content at the new
+    origin, so the pill blinked sideways on every hover. A region change has no such frame.
   - On Windows, `Place` also calls `SetWindowPos` with position and size together, so the move and
-    resize can't show as two steps.
+    resize (on docking) can't show as two steps.
 - **Units.**
   - Screen geometry (`Screen.WorkingArea`) and window `Position` are in "desktop units": physical px
     on Windows, points on macOS (mac).
@@ -122,8 +126,9 @@ dotnet build -c Release                  # quick compile check
   - Use HKCU registry key paths and `RemoveFolder`.
   - A component with a file plus a registry key path needs an explicit `Guid`.
   - ICE91 is suppressed.
-- **No git repo.** There is no history to revert to. Before a large redesign, consider asking the
-  user or keeping a copy, because the user has asked to "return to how it was" before.
+- **Git.** The repo is `https://github.com/posmikael/ClaudeQuota` (branch `main`) and uses a repo-local
+  identity, `the repo owner`; the global git config is a work email. The user has asked to
+  "return to how it was" before, so commit before a large redesign.
 - **Avalonia 12 renames.** `SystemDecorations` is now `WindowDecorations`.
 
 ## Verifying UI changes (how this was tested)

@@ -7,7 +7,7 @@
     <AssemblyName>ClaudeQuota</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>app.ico</ApplicationIcon>
-    <Version>2.0.0</Version>
+    <Version>2.0.1</Version>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <DefaultItemExcludes>$(DefaultItemExcludes);installer/**;publish/**;dist/**;backup-wpf/**</DefaultItemExcludes>
   </PropertyGroup>
