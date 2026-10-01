@@ -25,8 +25,8 @@ It sits as a translucent "soap bubble" pill docked to a screen edge. Hover it to
   - Left/right edges: a vertical strip (40×150) that expands into a tall panel along the edge.
 - **Multi-monitor and mixed DPI.** It works on any screen and stays crisp at any scaling. The
   screen, edge and position are remembered. If that screen is gone, it moves to the primary one.
-- **Auto refresh.** Updates every 60 seconds. Right-click for **Refresh now**,
-  **Start with Windows** / **Start at login**, and **Exit**.
+- **Auto refresh.** Updates every 5 minutes. Click the pill to refresh now. Right-click for
+  **Refresh now**, **Start with Windows** / **Start at login**, and **Exit**.
 - **Click-through.** The window is only as big as the pill, so it never blocks clicks around it.
 
 ## Requirements
@@ -70,7 +70,7 @@ open "/Applications/Claude Quota.app"
 ```
 
 On the first refresh, macOS asks whether `security` may read the **Claude Code-credentials**
-Keychain item. Choose **Always Allow**. If you choose *Allow*, it asks again every minute.
+Keychain item. Choose **Always Allow**. If you choose *Allow*, it asks again on every refresh.
 
 To start it at login, right-click the pill and choose **Start at login**. This writes
 `~/Library/LaunchAgents/com.claudequota.plist`. To uninstall, turn that off, quit the widget
@@ -143,8 +143,9 @@ the icon is missing.
 
 | Symptom | Fix |
 |---|---|
-| "Login expired - run Claude Code once." | Open Claude Code so it refreshes its token. The widget re-reads it every minute. |
+| "Login expired - run Claude Code once." | Open Claude Code so it refreshes its token. The widget re-reads it on every refresh. |
 | "Not signed in - run Claude Code once." | Claude Code's login wasn't found. Sign in to Claude Code. On a Mac, check that the Keychain prompt wasn't denied. |
+| "Rate limited · updated HH:mm" | The server got too many usage requests (HTTP 429). The widget waits as long as the server asks (about 2 minutes), then tries again. |
 | Shows `…` / "Loading…" for a long time | Usually a network problem. The status line in the expanded view shows the error. |
 | macOS: "is damaged and can't be opened" or "cannot be opened" | Run the `xattr` and `codesign` commands from *Install on macOS*. |
 | Widget is off-screen or on the wrong screen | Delete `dock.txt` (see *Usage*) and restart. |

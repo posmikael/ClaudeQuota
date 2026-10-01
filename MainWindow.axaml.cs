@@ -41,7 +41,7 @@ public partial class MainWindow : Window
     double CollapsedH => Vertical ? 150 : 36;
     double ExpandedW => Vertical ? 150 : 360;
     double ExpandedH => Vertical ? 300 : 140;
-    readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(60) };
+    readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMinutes(5) };   // the usage endpoint rate-limits (HTTP 429)
 
     public MainWindow()
     {
@@ -390,10 +390,16 @@ public partial class MainWindow : Window
     // ---- Data ----
     bool _refreshing;
     DateTime? _updated;   // time of the last successful refresh
+    DateTime _retryAt;    // after HTTP 429, no requests before this
 
     async Task RefreshAsync(bool manual = false)
     {
         if (_refreshing) return;   // e.g. a Keychain prompt is still waiting for an answer
+        if (DateTime.Now < _retryAt)
+        {
+            if (manual) StatusText.Text = $"Rate limited, wait until {_retryAt:HH:mm}";
+            return;
+        }
         _refreshing = true;
         if (manual) StatusText.Text = "Updating…";
         try
@@ -405,6 +411,13 @@ public partial class MainWindow : Window
             req.Headers.Add("anthropic-beta", "oauth-2025-04-20");
             req.Headers.Add("User-Agent", "claude-code/2.0");
             var resp = await Http.SendAsync(req);
+            if (resp.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            {
+                // Retry-After is in seconds (about 2 min seen); without it, wait 5 min
+                _retryAt = DateTime.Now + (resp.Headers.RetryAfter?.Delta ?? TimeSpan.FromMinutes(5));
+                Fail("Rate limited", "HTTP 429");
+                return;
+            }
             if (!resp.IsSuccessStatusCode)
             {
                 Fail(resp.StatusCode == System.Net.HttpStatusCode.Unauthorized
@@ -455,7 +468,8 @@ public partial class MainWindow : Window
 
     // The data on screen stays from the last good refresh, so say how old it is.
     void Fail(string text, string detail) =>
-        SetStatus(false, _updated is DateTime t ? $"{text} · updated {t:HH:mm}" : text, detail + Environment.NewLine + "Click to retry");
+        SetStatus(false, _updated is DateTime t ? $"{text} · updated {t:HH:mm}" : text,
+            detail + Environment.NewLine + (DateTime.Now < _retryAt ? $"Next try after {_retryAt:HH:mm}" : "Click to retry"));
 
     // Returns percent left, and fills the ring, labels and the matching square.
     static double? ShowLimit(JsonElement root, string key, Avalonia.Controls.Shapes.Path arc, TextBlock pct, TextBlock reset, Border fill)
