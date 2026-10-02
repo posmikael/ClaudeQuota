@@ -27,7 +27,7 @@ What changed in each version: [CHANGELOG.md](CHANGELOG.md).
   - Left/right edges: a vertical strip (40×150) that expands into a tall panel along the edge.
 - **Multi-monitor and mixed DPI.** It works on any screen and stays crisp at any scaling. The
   screen, edge and position are remembered. If that screen is gone, it moves to the primary one.
-- **Auto refresh.** Updates every 5 minutes. Click the pill to refresh now. Right-click for
+- **Auto refresh.** Updates every minute. Click the pill to refresh now. Right-click for
   **Refresh now**, **Start with Windows** / **Start at login**, and **Exit**.
 - **Click-through.** The window is only as big as the pill, so it never blocks clicks around it.
 

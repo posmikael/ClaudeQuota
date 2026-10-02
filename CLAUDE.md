@@ -91,7 +91,7 @@ dotnet build -c Release                  # quick compile check
   film and rim brushes.
   - Avalonia `Animation` can't target a brush's transform: it throws `InvalidCastException` to
     `Visual`.
-- **Data.** `RefreshAsync()` runs every 5 min (and on a click without a drag). It gets the token via
+- **Data.** `RefreshAsync()` runs every minute (and on a click without a drag). It gets the token via
   `ReadCredentials()` on a worker thread.
   - macOS: `security find-generic-password -s "Claude Code-credentials" -w` (mac), falling back to
     the file.
@@ -102,7 +102,8 @@ dotnet build -c Release                  # quick compile check
   - `_refreshing` stops overlapping refreshes while a Keychain prompt is open.
   - The endpoint rate-limits: HTTP 429 with `Retry-After` (128 s was seen) and no ratelimit
     headers. On 429 `_retryAt` blocks all requests, timer and clicks, until then. Polling every
-    60 s plus Claude Code's own calls with the same token was enough to hit it.
+    60 s plus Claude Code's own calls with the same token was enough to hit it. v2.0.4 moved to
+    5 min for that reason; v2.0.5 went back to 1 min at the owner's request, relying on the backoff.
 - **Autostart.** Windows uses the HKCU Run value `ClaudeQuota`. macOS uses
   `~/Library/LaunchAgents/com.claudequota.plist` with `RunAtLoad` (mac).
 - **Windows-only bits.**

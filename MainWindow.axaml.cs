@@ -41,7 +41,7 @@ public partial class MainWindow : Window
     double CollapsedH => Vertical ? 150 : 36;
     double ExpandedW => Vertical ? 150 : 360;
     double ExpandedH => Vertical ? 300 : 140;
-    readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMinutes(5) };   // the usage endpoint rate-limits (HTTP 429)
+    readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMinutes(1) };   // on HTTP 429 RefreshAsync waits out Retry-After
 
     public MainWindow()
     {

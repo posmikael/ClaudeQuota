@@ -2,6 +2,11 @@
 
 What changed in each version of Claude Quota. The newest version is at the top.
 
+## 2.0.5 (2026-10-02)
+
+- **Refreshes every minute** again. If the server answers "Too Many Requests", the widget still
+  waits as long as it asks before trying again.
+
 ## 2.0.4 (2026-10-01)
 
 - **Rate limits are handled.** Asking for usage too often gets "Too Many Requests" (HTTP 429)
