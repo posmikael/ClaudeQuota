@@ -2,6 +2,17 @@
 
 What changed in each version of Claude Quota. The newest version is at the top.
 
+## 2.0.7 (2026-10-09)
+
+- **Fixes a half-drawn pill after unplugging a monitor.** The widget now settles twice after a
+  display change and redraws itself.
+
+## 2.0.6 (2026-10-09)
+
+- **Smoother when screens change.** Plugging or unplugging a monitor, or sharing your screen in
+  Teams, no longer makes the pill jump or flicker. It now re-docks once, after the change settles.
+- **Stays on top without flicker.** The keep-on-top check no longer toggles the window.
+
 ## 2.0.5 (2026-10-02)
 
 - **Refreshes every minute** again. If the server answers "Too Many Requests", the widget still

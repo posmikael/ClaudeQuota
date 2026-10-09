@@ -41,6 +41,7 @@ public partial class MainWindow : Window
     double CollapsedH => Vertical ? 150 : 36;
     double ExpandedW => Vertical ? 150 : 360;
     double ExpandedH => Vertical ? 300 : 140;
+    readonly DispatcherTimer _redock = new() { Interval = TimeSpan.FromMilliseconds(400) };
     readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMinutes(1) };   // on HTTP 429 RefreshAsync waits out Retry-After
 
     public MainWindow()
@@ -67,9 +68,19 @@ public partial class MainWindow : Window
         StartupItem.IsChecked = StartupEnabled();
 
         Opened += async (_, _) => { LoadDock(); await RefreshAsync(); };
-        Screens.Changed += (_, _) => Dispatcher.UIThread.Post(() => Dock(_monitor, _edge, _frac));
+        // Display changes (plug/unplug, Teams screen share) fire in bursts: re-dock once, after things settle.
+        // A second pass shortly after catches DPI/size changes the OS applies late and forces a fresh frame;
+        // after a monitor was unplugged the pill was once left drawn at half height.
+        _redock.Tick += (_, _) =>
+        {
+            _redock.Stop();
+            if (_pressed) return;
+            Dock(_monitor, _edge, _frac);
+            DispatcherTimer.RunOnce(() => { if (!_pressed) { Dock(_monitor, _edge, _frac); Pill.InvalidateMeasure(); InvalidateVisual(); } }, TimeSpan.FromMilliseconds(600));
+        };
+        Screens.Changed += (_, _) => { _redock.Stop(); _redock.Start(); };
         // Moving onto a monitor with different scaling makes the OS rescale/reposition the window; re-dock afterwards.
-        ScalingChanged += (_, _) => { if (!_pressed) Dispatcher.UIThread.Post(() => Dock(_monitor, _edge, _frac)); };
+        ScalingChanged += (_, _) => { if (!_pressed) { _redock.Stop(); _redock.Start(); } };
 
         // Hover: poll the cursor. Enter/leave events misfire when the window grows under the pointer.
         var hover = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
@@ -85,7 +96,12 @@ public partial class MainWindow : Window
         _timer.Start();
         // Keep on top even over other topmost windows
         var keep = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
-        keep.Tick += (_, _) => { Topmost = false; Topmost = true; };
+        // Re-raise within the topmost band in one call; toggling Topmost off and on made the window flicker.
+        keep.Tick += (_, _) =>
+        {
+            if (!_pressed && TryGetPlatformHandle()?.Handle is IntPtr h)
+                SetWindowPos(h, new IntPtr(-1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010);   // HWND_TOPMOST, NOSIZE | NOMOVE | NOACTIVATE
+        };
         if (OperatingSystem.IsWindows()) keep.Start();
     }
 
