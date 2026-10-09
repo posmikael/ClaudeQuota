@@ -141,7 +141,6 @@ the icon is missing.
 | `build-mac.ps1` | macOS publish + `.app` bundles |
 | `CHANGELOG.md` | What changed in each version |
 | `LICENSE` | MIT license |
-| `backup-wpf\` | The previous Windows-only WPF version (v1), kept for reference. Not built. |
 
 ## Troubleshooting
 

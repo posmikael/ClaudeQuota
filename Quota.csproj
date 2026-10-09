@@ -9,7 +9,7 @@
     <ApplicationIcon>app.ico</ApplicationIcon>
     <Version>2.0.2</Version>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
-    <DefaultItemExcludes>$(DefaultItemExcludes);installer/**;publish/**;dist/**;backup-wpf/**</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);installer/**;publish/**;dist/**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia.Desktop" Version="12.1.3" />

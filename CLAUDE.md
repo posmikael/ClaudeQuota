@@ -9,7 +9,7 @@ An Avalonia 12 (.NET 10, `net10.0`) always-on-top widget for **Windows and macOS
 usage limits. It is one window with all logic in `MainWindow.axaml(.cs)`. Keep it that way unless it
 grows a lot. Prefer **simple, not over-engineered** solutions.
 
-v1 was Windows-only WPF. Its sources are kept in `backup-wpf\`, which is excluded from the build.
+v1 was Windows-only WPF. Its sources were removed from the repo; they are in the git history before the cleanup commit.
 
 Personal, machine-specific notes (if any) are in `CLAUDE.local.md`, which is not committed.
 

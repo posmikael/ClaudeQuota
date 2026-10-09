@@ -50,4 +50,4 @@ What changed in each version of Claude Quota. The newest version is at the top.
 
 ## 1.x
 
-- The first, Windows-only version (WPF). Its sources and installer are kept in `backup-wpf\`.
+- The first, Windows-only version (WPF).
