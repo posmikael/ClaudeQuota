@@ -22,8 +22,14 @@ What changed in each version: [CHANGELOG.md](CHANGELOG.md).
 
 - **Hover to expand.** Shows Session/Week rings with reset countdowns, extra-usage spend and the
   last update time.
+  - The white mark on a ring is where you would be at an even pace. If you're ahead of it, a
+    yellow `Runs out ~HH:mm` line says when the quota runs out at your rate so far.
+- **Warnings.** A percentage turns yellow at 25% left and red at 10% left. When the numbers are
+  more than 10 minutes old (offline, rate limited, logged out), they fade.
+- **Gets out of the way.** On Windows the pill hides while a fullscreen app (video, game, slide
+  show) covers its screen.
 - **Drag to any edge.** The widget snaps to the nearest edge of the screen you drop it on.
-  - Top/bottom edges: a horizontal pill (280×36).
+  - Top/bottom edges: a horizontal pill (280×36) that expands to 360×152.
   - Left/right edges: a vertical strip (40×150) that expands into a tall panel along the edge.
 - **Multi-monitor and mixed DPI.** It works on any screen and stays crisp at any scaling. The
   screen, edge and position are remembered. If that screen is gone, it moves to the primary one.

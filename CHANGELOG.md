@@ -2,6 +2,21 @@
 
 What changed in each version of Claude Quota. The newest version is at the top.
 
+## 2.1.0 (2026-10-12)
+
+- **See your pace.** A white mark on each ring shows where you would be if you spread your quota
+  evenly over the window. If you're using it faster than that, a yellow line says when it will run
+  out, e.g. `Runs out ~15:40`.
+- **Warns when you're low.** A percentage turns yellow at 25% left and red at 10% left.
+- **Old numbers fade.** If the widget hasn't been able to update for 10 minutes (offline, rate
+  limited, logged out), the numbers dim so you don't take them for current ones.
+- **Countdowns keep running** between updates, and also while offline.
+- **Steps aside for fullscreen apps (Windows).** The pill hides while a video, game or slide show
+  fills its screen, and comes back when it's closed.
+- **Only one copy runs.** Starting it again while it's already running does nothing, so two copies
+  can't double the requests and hit the rate limit.
+- **Uses less power.** The shimmer animation now draws 20 times a second instead of every frame.
+
 ## 2.0.7 (2026-10-09)
 
 - **Fixes a half-drawn pill after unplugging a monitor.** The widget now settles twice after a

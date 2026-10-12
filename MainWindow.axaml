@@ -146,22 +146,26 @@
       <!-- Expanded details: three columns on the top/bottom edge, stacked rows along the left/right edge -->
       <Grid x:Name="Details" Classes="fade" Grid.Row="1" Margin="16,4,16,12" Opacity="0" ColumnDefinitions="*,*,1.3*">
         <StackPanel x:Name="DSession" HorizontalAlignment="Center">
-          <Grid Width="48" Height="48">
+          <Grid Width="48" Height="48" ToolTip.Tip="The white mark is where you would be at an even pace">
             <Path x:Name="SessionTrack" Stroke="#33FFFFFF" StrokeThickness="5"/>
             <Path x:Name="SessionArc" Stroke="#FF9F0A" StrokeThickness="5" StrokeLineCap="Round"/>
+            <Path x:Name="SessionPace" Stroke="White" StrokeThickness="2" StrokeLineCap="Round"/>
             <TextBlock x:Name="SessionPct" Foreground="White" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
           </Grid>
           <TextBlock Text="Session" Foreground="White" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,4,0,0"/>
           <TextBlock x:Name="SessionReset" Classes="small"/>
+          <TextBlock x:Name="SessionOut" Classes="small" Foreground="#FFD60A" IsVisible="False"/>
         </StackPanel>
         <StackPanel x:Name="DWeek" Grid.Column="1" HorizontalAlignment="Center">
-          <Grid Width="48" Height="48">
+          <Grid Width="48" Height="48" ToolTip.Tip="The white mark is where you would be at an even pace">
             <Path x:Name="WeekTrack" Stroke="#33FFFFFF" StrokeThickness="5"/>
             <Path x:Name="WeekArc" Stroke="#BF5AF2" StrokeThickness="5" StrokeLineCap="Round"/>
+            <Path x:Name="WeekPace" Stroke="White" StrokeThickness="2" StrokeLineCap="Round"/>
             <TextBlock x:Name="WeekPct" Foreground="White" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center"/>
           </Grid>
           <TextBlock Text="Week" Foreground="White" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,4,0,0"/>
           <TextBlock x:Name="WeekReset" Classes="small"/>
+          <TextBlock x:Name="WeekOut" Classes="small" Foreground="#FFD60A" IsVisible="False"/>
         </StackPanel>
         <StackPanel x:Name="DExtra" Grid.Column="2" VerticalAlignment="Center" Margin="8,0,0,0">
           <TextBlock Text="Extra usage" Foreground="#D1D1D6" FontSize="10"/>

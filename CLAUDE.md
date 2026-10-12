@@ -81,14 +81,15 @@ dotnet build -c Release                  # quick compile check
   - **Don't switch back to `PointerEntered`/`PointerExited`.** Growing the window under the
     cursor makes Avalonia fire a spurious exit, which loops into expand/collapse flicker.
 - **Orientation.** `Vertical` is true for the Left/Right edges.
-  - `CollapsedW/H` and `ExpandedW/H` switch between horizontal (280×36 → 360×140) and vertical
-    (40×150 → 150×300).
+  - `CollapsedW/H` and `ExpandedW/H` switch between horizontal (280×36 → 360×152) and vertical
+    (40×150 → 150×330).
   - `LayoutDetails()` rearranges the same three detail panels (`DSession`, `DWeek`, `DExtra`) from
     columns to rows.
   - The vertical collapsed header `VHeader` mirrors the square fills via `{Binding #FillSession.Height}`.
 - **Clip.** The `Pill` border has `ClipToBounds`, which clips to its own (per-edge) corner radii.
-- **Shimmer.** `Shimmer()` runs on `RequestAnimationFrame` and sets a new `RotateTransform` on the
-  film and rim brushes.
+- **Shimmer.** The 50 ms hover tick calls `Shimmer()`, which sets a new `RotateTransform` on the
+  film and rim brushes. That is 20 fps. It used to run on `RequestAnimationFrame` (every frame,
+  forever), which was wasteful for an always-on widget.
   - Avalonia `Animation` can't target a brush's transform: it throws `InvalidCastException` to
     `Visual`.
 - **Data.** `RefreshAsync()` runs every minute (and on a click without a drag). It gets the token via
@@ -100,6 +101,15 @@ dotnet build -c Release                  # quick compile check
   - Fields used: `five_hour`, `seven_day` (`utilization` = % used, `resets_at`), and `extra_usage`
     (`used_credits` in minor units with `decimal_places`, `monthly_limit` may be null).
   - `_refreshing` stops overlapping refreshes while a Keychain prompt is open.
+  - The response is stored as `Limit(Used, Resets)` in `_session`/`_week`. `Render()` draws it
+    against the current time on every refresh and every 15 s, so countdowns keep moving offline.
+  - **Pace.** The window started at `resets_at` minus 5 h or 7 d. The white tick on a ring is
+    "left at an even pace". `Runs out ~HH:mm` extrapolates the average rate so far and shows only
+    if that comes before the reset, and not in the first 5% of the window.
+  - **Warnings.** Text turns `#FFD60A` at ≤25% left and `#FF453A` at ≤10% left. After 10 minutes
+    without a good refresh the numbers and rings drop to 0.45 opacity.
+- **Single instance.** `Program.Main` holds a named `Mutex("ClaudeQuota")`, which works on Windows
+  and macOS. Two copies doubled the polling and hit the 429.
   - The endpoint rate-limits: HTTP 429 with `Retry-After` (128 s was seen) and no ratelimit
     headers. On 429 `_retryAt` blocks all requests, timer and clicks, until then. Polling every
     60 s plus Claude Code's own calls with the same token was enough to hit it. v2.0.4 moved to
@@ -108,7 +118,13 @@ dotnet build -c Release                  # quick compile check
   `~/Library/LaunchAgents/com.claudequota.plist` with `RunAtLoad` (mac).
 - **Windows-only bits.**
   - `WS_EX_TOOLWINDOW` via `Win32Properties.AddWindowStylesCallback` hides it from Alt+Tab.
-  - A 5 s timer toggles `Topmost` to stay above other topmost windows.
+  - A 1 s timer re-raises the window every 5th tick with `SetWindowPos(HWND_TOPMOST)` to stay above
+    other topmost windows.
+  - On each tick it also checks `FullscreenOverPill()`: is the foreground window covering the pill's
+    monitor, without `WS_CAPTION`, and not `Progman`/`WorkerW` (the desktop)? If so, the pill is
+    hidden with `ShowWindow(SW_HIDE)`, and `_hidden` pauses hover and the shimmer. A caption means
+    a maximized window (e.g. with an auto-hidden taskbar), not fullscreen. This was tested with a
+    borderless WinForms window over the wide monitor.
   - Corner rounding is off.
 
 ## Gotchas learned (do not regress these)

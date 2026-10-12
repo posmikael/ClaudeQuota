@@ -3,9 +3,11 @@ using System.Globalization;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Security;
+using System.Text;
 using System.Text.Json;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
 using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -40,7 +42,7 @@ public partial class MainWindow : Window
     double CollapsedW => Vertical ? 40 : 280;
     double CollapsedH => Vertical ? 150 : 36;
     double ExpandedW => Vertical ? 150 : 360;
-    double ExpandedH => Vertical ? 300 : 140;
+    double ExpandedH => Vertical ? 330 : 152;
     readonly DispatcherTimer _redock = new() { Interval = TimeSpan.FromMilliseconds(400) };
     readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMinutes(1) };   // on HTTP 429 RefreshAsync waits out Retry-After
 
@@ -83,36 +85,84 @@ public partial class MainWindow : Window
         ScalingChanged += (_, _) => { if (!_pressed) { _redock.Stop(); _redock.Start(); } };
 
         // Hover: poll the cursor. Enter/leave events misfire when the window grows under the pointer.
+        // The same 50 ms tick drives the shimmer: 20 fps is smooth for such a slow turn and far cheaper than every frame.
         var hover = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
-        hover.Tick += (_, _) => { if (!_pressed && IsVisible && PointerOverPill() != _open) Expand(!_open); };
+        var clock = Stopwatch.StartNew();
+        hover.Tick += (_, _) =>
+        {
+            if (_hidden || !IsVisible) return;
+            Shimmer(clock.Elapsed.TotalSeconds);
+            if (!_pressed && PointerOverPill() != _open) Expand(!_open);
+        };
         hover.Start();
         Pill.PointerPressed += Pill_Pressed;
         Pill.PointerMoved += Pill_Moved;
         Pill.PointerReleased += Pill_Released;
 
         SessionTrack.Data = WeekTrack.Data = Arc(359.99);
-        RequestAnimationFrame(Shimmer);
         _timer.Tick += async (_, _) => await RefreshAsync();
         _timer.Start();
-        // Keep on top even over other topmost windows
-        var keep = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
-        // Re-raise within the topmost band in one call; toggling Topmost off and on made the window flicker.
+        // Countdowns, pace and staleness move with the clock, not only when a refresh succeeds
+        var render = new DispatcherTimer { Interval = TimeSpan.FromSeconds(15) };
+        render.Tick += (_, _) => Render();
+        render.Start();
+        // Every second: step aside for a fullscreen app on the pill's screen. Every 5 s: keep on top even over
+        // other topmost windows. Re-raise within the topmost band in one call; toggling Topmost made it flicker.
+        var keep = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        int ticks = 0;
         keep.Tick += (_, _) =>
         {
-            if (!_pressed && TryGetPlatformHandle()?.Handle is IntPtr h)
+            if (_pressed || TryGetPlatformHandle()?.Handle is not IntPtr h) return;
+            bool hide = FullscreenOverPill(h);
+            if (hide != _hidden)
+            {
+                _hidden = hide;
+                if (hide) Expand(false);
+                ShowWindow(h, hide ? 0 : 4);   // SW_HIDE, SW_SHOWNOACTIVATE
+            }
+            if (!_hidden && ++ticks % 5 == 0)
                 SetWindowPos(h, new IntPtr(-1), 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010);   // HWND_TOPMOST, NOSIZE | NOMOVE | NOACTIVATE
         };
         if (OperatingSystem.IsWindows()) keep.Start();
     }
 
     // Slowly rotate the film (one turn per 14 s) and, the other way, the rim (per 9 s): the soap-bubble shimmer
-    void Shimmer(TimeSpan t)
+    void Shimmer(double s)
     {
-        double s = t.TotalSeconds;
         if (Film.Fill is Brush film) film.Transform = new RotateTransform(s * 360 / 14 % 360);
         if (Pill.BorderBrush is Brush rim) rim.Transform = new RotateTransform(360 - s * 360 / 9 % 360);
-        RequestAnimationFrame(Shimmer);
     }
+
+    // ---- Fullscreen (Windows): hide while a fullscreen app (video, game, slide show) covers the pill's screen ----
+    bool _hidden;
+
+    bool FullscreenOverPill(IntPtr self)
+    {
+        var fg = GetForegroundWindow();
+        if (fg == IntPtr.Zero || fg == self || !GetWindowRect(fg, out var r)) return false;
+        var mi = new MONITORINFO { cbSize = Marshal.SizeOf<MONITORINFO>() };
+        var center = new POINT { X = _pill.Center.X, Y = _pill.Center.Y };
+        if (!GetMonitorInfo(MonitorFromPoint(center, 2 /* MONITOR_DEFAULTTONEAREST */), ref mi)) return false;
+        var m = mi.rcMonitor;
+        if (r.Left > m.Left || r.Top > m.Top || r.Right < m.Right || r.Bottom < m.Bottom) return false;
+        // A maximized window can cover the screen too (auto-hide taskbar), but it keeps its title bar
+        const int WS_CAPTION = 0x00C00000;
+        if ((GetWindowLong(fg, -16 /* GWL_STYLE */) & WS_CAPTION) == WS_CAPTION) return false;
+        // The desktop itself is a screen-sized window without a caption
+        var cls = new StringBuilder(64);
+        GetClassName(fg, cls, cls.Capacity);
+        return cls.ToString() is not ("Progman" or "WorkerW");
+    }
+
+    [StructLayout(LayoutKind.Sequential)] struct RECT { public int Left, Top, Right, Bottom; }
+    [StructLayout(LayoutKind.Sequential)] struct MONITORINFO { public int cbSize; public RECT rcMonitor, rcWork; public int dwFlags; }
+    [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr h, out RECT r);
+    [DllImport("user32.dll")] static extern int GetWindowLong(IntPtr h, int index);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr h, StringBuilder name, int max);
+    [DllImport("user32.dll")] static extern IntPtr MonitorFromPoint(POINT p, uint flags);
+    [DllImport("user32.dll")] static extern bool GetMonitorInfo(IntPtr monitor, ref MONITORINFO mi);
+    [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr h, int cmd);
 
     // ---- Docking: drag anywhere, snaps to the nearest edge of the screen it was dropped on ----
     // Screen geometry and window Position are in "desktop units": physical pixels on Windows, points on macOS.
@@ -442,18 +492,15 @@ public partial class MainWindow : Window
             }
             using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
             var root = doc.RootElement;
-            var session = ShowLimit(root, "five_hour", SessionArc, SessionPct, SessionReset, FillSession);
-            var week = ShowLimit(root, "seven_day", WeekArc, WeekPct, WeekReset, FillWeek);
-            Summary.Text = $"{Pct(session)}  ·  {Pct(week)}";
-            VSession.Text = Pct(session); VWeek.Text = Pct(week);
-            ShowExtra(root);
+            _session = ReadLimit(root, "five_hour");
+            _week = ReadLimit(root, "seven_day");            ShowExtra(root);
             _updated = DateTime.Now;
-            SetStatus(true, $"Updated {_updated:HH:mm}", "Click to refresh");
-        }
+            SetStatus(true, $"Updated {_updated:HH:mm}", "Click to refresh");        }
         // Network errors read like "...(api.anthropic.com:443)"; show something short and keep the full text in the tooltip.
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException) { Fail("No connection", ex.Message); }
         catch (Exception ex) { Fail(ex.Message, ex.Message); }
         finally { _refreshing = false; }
+        Render();   // after a failure too: the data on screen may have gone stale
     }
 
     // Claude Code's login: in the Keychain on macOS, in ~/.claude/.credentials.json elsewhere.
@@ -487,25 +534,89 @@ public partial class MainWindow : Window
         SetStatus(false, _updated is DateTime t ? $"{text} · updated {t:HH:mm}" : text,
             detail + Environment.NewLine + (DateTime.Now < _retryAt ? $"Next try after {_retryAt:HH:mm}" : "Click to retry"));
 
-    // Returns percent left, and fills the ring, labels and the matching square.
-    static double? ShowLimit(JsonElement root, string key, Avalonia.Controls.Shapes.Path arc, TextBlock pct, TextBlock reset, Border fill)
+    // One usage window: percent used and when it resets (so it started at reset minus its length)
+    record Limit(double Used, DateTimeOffset? Resets);
+    Limit? _session, _week;
+    static readonly TimeSpan SessionWindow = TimeSpan.FromHours(5), WeekWindow = TimeSpan.FromDays(7);
+    static readonly IBrush Low = new SolidColorBrush(Color.Parse("#FFD60A")), Critical = new SolidColorBrush(Color.Parse("#FF453A"));
+    static IBrush? Warn(double? left) => left switch { <= 10 => Critical, <= 25 => Low, _ => null };
+
+    static Limit? ReadLimit(JsonElement root, string key)
     {
-        if (!root.TryGetProperty(key, out var e) || e.ValueKind != JsonValueKind.Object)
+        if (!root.TryGetProperty(key, out var e) || e.ValueKind != JsonValueKind.Object) return null;
+        DateTimeOffset? resets = e.TryGetProperty("resets_at", out var r) && r.ValueKind == JsonValueKind.String
+            ? DateTimeOffset.Parse(r.GetString()!, CultureInfo.InvariantCulture) : null;
+        return new Limit(e.GetProperty("utilization").GetDouble(), resets);
+    }
+
+    // Draws the last good data against the current time: countdowns, pace, low-quota colours, staleness.
+    void Render()
+    {
+        if (_updated == null) return;   // "…" until the first answer
+        var session = ShowLimit(_session, SessionWindow, SessionArc, SessionPace, SessionPct, SessionReset, SessionOut, FillSession);
+        var week = ShowLimit(_week, WeekWindow, WeekArc, WeekPace, WeekPct, WeekReset, WeekOut, FillWeek);
+        Summary.Inlines = [Colored(Pct(session), Warn(session)), new Run("  ·  "), Colored(Pct(week), Warn(week))];
+        VSession.Text = Pct(session); VWeek.Text = Pct(week);
+        VSession.Foreground = Warn(session) ?? Summary.Foreground;
+        VWeek.Foreground = Warn(week) ?? Summary.Foreground;
+        // Old numbers fade, so they aren't taken for current ones (offline, rate limited, logged out)
+        double o = DateTime.Now - _updated > TimeSpan.FromMinutes(10) ? 0.45 : 1;
+        Summary.Opacity = VSession.Opacity = VWeek.Opacity = DSession.Opacity = DWeek.Opacity = o;
+    }
+
+    static Run Colored(string text, IBrush? brush)
+    {
+        var run = new Run(text);
+        if (brush != null) run.Foreground = brush;
+        return run;
+    }
+
+    // Fills the ring, pace mark, labels and the matching square; returns percent left.
+    static double? ShowLimit(Limit? l, TimeSpan window, Avalonia.Controls.Shapes.Path arc, Avalonia.Controls.Shapes.Path pace,
+        TextBlock pct, TextBlock reset, TextBlock runsOut, Border fill)
+    {
+        pace.Data = null; reset.Text = ""; runsOut.IsVisible = false;
+        if (l == null)
         {
-            arc.Data = null; pct.Text = "–"; reset.Text = ""; fill.Height = 0;
+            arc.Data = null; pct.Text = "–"; fill.Height = 0;
             return null;
         }
-        double left = Math.Clamp(100 - e.GetProperty("utilization").GetDouble(), 0, 100);
+        double left = Math.Clamp(100 - l.Used, 0, 100);
         arc.Data = left < 0.5 ? null : Arc(Math.Min(left, 99.9) * 3.6);
         pct.Text = $"{left:0}%";
+        pct.Foreground = Warn(left) ?? Brushes.White;
         fill.Height = SquareSize * left / 100;
-        reset.Text = "";
-        if (e.TryGetProperty("resets_at", out var r) && r.ValueKind == JsonValueKind.String)
+        if (l.Resets is not DateTimeOffset r) return left;
+
+        var now = DateTimeOffset.Now;
+        var d = r - now;
+        if (d <= TimeSpan.Zero) { reset.Text = "Resetting…"; return left; }
+        reset.Text = d.TotalHours >= 24 ? $"{(int)d.TotalDays}d {d.Hours}h left" : $"{(int)d.TotalHours}h {d.Minutes}m left";
+
+        // Even pace: what would be left now if the quota were spread evenly over the window
+        var elapsed = window - d;
+        pace.Data = Tick((1 - Math.Clamp(elapsed / window, 0, 1)) * 360);
+        // At the average rate so far, when it runs out. Shown only if that is before the reset;
+        // skipped very early in the window, where the rate means little.
+        if (l.Used is >= 1 and < 100 && elapsed > window * 0.05)
         {
-            var d = DateTimeOffset.Parse(r.GetString()!, CultureInfo.InvariantCulture) - DateTimeOffset.Now;
-            reset.Text = d.TotalHours >= 24 ? $"{(int)d.TotalDays}d {d.Hours}h left" : $"{Math.Max(0, (int)d.TotalHours)}h {Math.Max(0, d.Minutes)}m left";
+            var at = now + elapsed * ((100 - l.Used) / l.Used);
+            if (at < r)
+            {
+                var t = at.LocalDateTime;
+                runsOut.Text = "Runs out ~" + t.ToString(t.Date == DateTime.Today ? "HH:mm" : "ddd HH:mm", CultureInfo.InvariantCulture);
+                runsOut.IsVisible = true;
+            }
         }
         return left;
+    }
+
+    // Short mark across the ring at an angle from 12 o'clock, clockwise (same 48x48 box as Arc)
+    static Geometry Tick(double degrees)
+    {
+        const double c = 24;
+        double a = degrees * Math.PI / 180, x = Math.Sin(a), y = -Math.Cos(a);
+        return new LineGeometry(new Point(c + 17.5 * x, c + 17.5 * y), new Point(c + 25.5 * x, c + 25.5 * y));
     }
 
     // Extra usage (credits spent beyond the plan). The red square fills with spend vs. the monthly limit.
