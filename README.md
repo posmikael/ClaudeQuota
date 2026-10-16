@@ -24,12 +24,14 @@ What changed in each version: [CHANGELOG.md](CHANGELOG.md).
   last update time.
   - The white mark on a ring is where you would be at an even pace. If you're ahead of it, a
     yellow `Runs out ~HH:mm` line says when the quota runs out at your rate so far.
+  - A green dollar amount under each ring is what that session or week would have cost at API list
+    prices. It counts Claude Code on this computer only (see *Note on the data source*).
 - **Warnings.** A percentage turns yellow at 25% left and red at 10% left. When the numbers are
   more than 10 minutes old (offline, rate limited, logged out), they fade.
 - **Gets out of the way.** On Windows the pill hides while a fullscreen app (video, game, slide
   show) covers its screen.
 - **Drag to any edge.** The widget snaps to the nearest edge of the screen you drop it on.
-  - Top/bottom edges: a horizontal pill (280×36) that expands to 360×152.
+  - Top/bottom edges: a horizontal pill (280×36) that expands to 360×166.
   - Left/right edges: a vertical strip (40×150) that expands into a tall panel along the edge.
 - **Multi-monitor and mixed DPI.** It works on any screen and stays crisp at any scaling. The
   screen, edge and position are remembered. If that screen is gone, it moves to the primary one.
@@ -164,6 +166,11 @@ the icon is missing.
 
 Usage comes from `GET https://api.anthropic.com/api/oauth/usage`, the endpoint Claude Code itself
 uses. It is undocumented and may change without notice.
+
+The dollar amounts are not from Anthropic. The widget adds up the token counts Claude Code writes
+to its transcripts in `~/.claude/projects` and prices them at the public API rates. With a
+subscription you don't pay these amounts; they show what the same use would cost on the API. Use
+in claude.ai, the Claude apps or on other computers is not included.
 
 Claude Quota is an unofficial community project. It is not affiliated with or endorsed by
 Anthropic. "Claude" is a trademark of Anthropic.

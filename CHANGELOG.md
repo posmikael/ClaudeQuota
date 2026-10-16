@@ -2,6 +2,12 @@
 
 What changed in each version of Claude Quota. The newest version is at the top.
 
+## 2.2.0 (2026-10-16)
+
+- **See what your use is worth.** Under the Session and Week rings, a green amount shows what that
+  window would have cost at API list prices, e.g. `$46.99`. It is worked out from Claude Code's own
+  logs on this computer, so use in claude.ai or on other computers isn't counted.
+
 ## 2.1.0 (2026-10-12)
 
 - **See your pace.** A white mark on each ring shows where you would be if you spread your quota

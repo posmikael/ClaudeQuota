@@ -81,8 +81,8 @@ dotnet build -c Release                  # quick compile check
   - **Don't switch back to `PointerEntered`/`PointerExited`.** Growing the window under the
     cursor makes Avalonia fire a spurious exit, which loops into expand/collapse flicker.
 - **Orientation.** `Vertical` is true for the Left/Right edges.
-  - `CollapsedW/H` and `ExpandedW/H` switch between horizontal (280×36 → 360×152) and vertical
-    (40×150 → 150×330).
+  - `CollapsedW/H` and `ExpandedW/H` switch between horizontal (280×36 → 360×166) and vertical
+    (40×150 → 150×360).
   - `LayoutDetails()` rearranges the same three detail panels (`DSession`, `DWeek`, `DExtra`) from
     columns to rows.
   - The vertical collapsed header `VHeader` mirrors the square fills via `{Binding #FillSession.Height}`.
@@ -106,6 +106,13 @@ dotnet build -c Release                  # quick compile check
   - **Pace.** The window started at `resets_at` minus 5 h or 7 d. The white tick on a ring is
     "left at an even pace". `Runs out ~HH:mm` extrapolates the average rate so far and shows only
     if that comes before the reset, and not in the first 5% of the window.
+  - **Cost.** `ShowCostsAsync()` runs after each refresh (also while rate limited). On a worker
+    thread it reads `~/.claude/projects/**/*.jsonl` written to since the week started, takes
+    `type: assistant` lines with `message.usage`, dedupes by `message.id:requestId` (streaming
+    repeats a response on several lines; resumed sessions repeat it in a new file) and prices them
+    with the `Prices` table (input, output, cache read; cache writes 1.25x/2x input for 5m/1h).
+    Windows are the same as the rings: `resets_at` minus 5 h / 7 d. Parsed files are cached by
+    write time and length. Update `Prices` when new models ship; unknown models count as $0.
   - **Warnings.** Text turns `#FFD60A` at ≤25% left and `#FF453A` at ≤10% left. After 10 minutes
     without a good refresh the numbers and rings drop to 0.45 opacity.
 - **Single instance.** `Program.Main` holds a named `Mutex("ClaudeQuota")`, which works on Windows

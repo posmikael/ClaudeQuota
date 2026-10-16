@@ -42,7 +42,7 @@ public partial class MainWindow : Window
     double CollapsedW => Vertical ? 40 : 280;
     double CollapsedH => Vertical ? 150 : 36;
     double ExpandedW => Vertical ? 150 : 360;
-    double ExpandedH => Vertical ? 330 : 152;
+    double ExpandedH => Vertical ? 360 : 166;
     readonly DispatcherTimer _redock = new() { Interval = TimeSpan.FromMilliseconds(400) };
     readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMinutes(1) };   // on HTTP 429 RefreshAsync waits out Retry-After
 
@@ -464,6 +464,7 @@ public partial class MainWindow : Window
         if (DateTime.Now < _retryAt)
         {
             if (manual) StatusText.Text = $"Rate limited, wait until {_retryAt:HH:mm}";
+            await ShowCostsAsync();   // local data, no request needed
             return;
         }
         _refreshing = true;
@@ -493,14 +494,17 @@ public partial class MainWindow : Window
             using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
             var root = doc.RootElement;
             _session = ReadLimit(root, "five_hour");
-            _week = ReadLimit(root, "seven_day");            ShowExtra(root);
+            _week = ReadLimit(root, "seven_day");
+            ShowExtra(root);
             _updated = DateTime.Now;
-            SetStatus(true, $"Updated {_updated:HH:mm}", "Click to refresh");        }
+            SetStatus(true, $"Updated {_updated:HH:mm}", "Click to refresh");
+        }
         // Network errors read like "...(api.anthropic.com:443)"; show something short and keep the full text in the tooltip.
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException) { Fail("No connection", ex.Message); }
         catch (Exception ex) { Fail(ex.Message, ex.Message); }
         finally { _refreshing = false; }
         Render();   // after a failure too: the data on screen may have gone stale
+        await ShowCostsAsync();
     }
 
     // Claude Code's login: in the Keychain on macOS, in ~/.claude/.credentials.json elsewhere.
@@ -633,9 +637,127 @@ public partial class MainWindow : Window
         double used = x.TryGetProperty("used_credits", out var u) && u.ValueKind == JsonValueKind.Number ? u.GetDouble() / scale : 0;
         double? limit = x.TryGetProperty("monthly_limit", out var l) && l.ValueKind == JsonValueKind.Number ? l.GetDouble() / scale : null;
         var cur = x.TryGetProperty("currency", out var c) && c.GetString() == "USD" ? "$" : "";
-        ExtraText.Text = limit is double lim ? $"{cur}{used:0.00} / {cur}{lim:0.00}" : $"{cur}{used:0.00} used";
+        ExtraText.Text = limit is double lim
+            ? string.Create(CultureInfo.InvariantCulture, $"{cur}{used:0.00} / {cur}{lim:0.00}")
+            : string.Create(CultureInfo.InvariantCulture, $"{cur}{used:0.00} used");
         FillExtra.Height = limit is double m && m > 0 ? SquareSize * Math.Clamp(used / m, 0, 1) : 0;
         ToolTip.SetTip(SqExtra, "Extra usage: " + ExtraText.Text);
+    }
+
+    // ---- Cost: what the session and week would cost at API list prices ----
+    // The usage endpoint only gives percentages, so add up the token usage Claude Code logs in its transcripts
+    // (~/.claude/projects/**/*.jsonl). Only Claude Code on this computer counts, not claude.ai or other machines.
+    static readonly string ProjectsDir = Path.Combine(Home, ".claude", "projects");
+    record Usage(string Key, DateTimeOffset At, double Usd);
+    readonly Dictionary<string, (DateTime Written, long Length, List<Usage> Items)> _transcripts = [];
+    bool _costing;
+
+    // USD per million tokens: input, output, cache read. Cache writes are 1.25x input (5 min) or 2x (1 h).
+    // Longer ids first, since the match is by prefix. Unknown models are left out.
+    static readonly (string Model, double In, double Out, double Read)[] Prices =
+    [
+        ("claude-fable-5-1", 10, 50, 0.25), ("claude-mythos-5-1", 10, 50, 0.25),
+        ("claude-fable-5", 10, 50, 1), ("claude-mythos-5", 10, 50, 1),
+        ("claude-opus-5-5", 4, 20, 0.20), ("claude-opus-5", 5, 25, 0.5),
+        ("claude-opus-4-8", 5, 25, 0.5), ("claude-opus-4-7", 5, 25, 0.5), ("claude-opus-4-6", 5, 25, 0.5),
+        ("claude-sonnet-5-5", 2, 10, 0.20), ("claude-sonnet-5", 2, 10, 0.20), ("claude-sonnet-4-6", 3, 15, 0.3),
+        ("claude-haiku-5-5", 0.10, 0.50, 0.01), ("claude-haiku-4-5", 1, 5, 0.1),
+    ];
+
+    async Task ShowCostsAsync()
+    {
+        if (_costing) return;
+        _costing = true;
+        try
+        {
+            var now = DateTimeOffset.Now;
+            var sessionStart = _session?.Resets is DateTimeOffset sr ? sr - SessionWindow : now - SessionWindow;
+            var weekStart = _week?.Resets is DateTimeOffset wr ? wr - WeekWindow : now - WeekWindow;
+            var (session, week) = await Task.Run(() => SumCosts(sessionStart, weekStart));
+            SessionCost.Text = Usd(session);
+            WeekCost.Text = Usd(week);
+        }
+        catch { }
+        finally { _costing = false; }
+    }
+
+    static string Usd(double v) => v >= 100 ? $"${v:0}" : string.Create(CultureInfo.InvariantCulture, $"${v:0.00}");
+
+    // Runs on a worker thread. A transcript is parsed again only when it has changed.
+    (double Session, double Week) SumCosts(DateTimeOffset sessionStart, DateTimeOffset weekStart)
+    {
+        double session = 0, week = 0;
+        if (!Directory.Exists(ProjectsDir)) return (0, 0);
+        var seen = new HashSet<string>();   // a resumed conversation repeats messages in a new file
+        foreach (var file in Directory.EnumerateFiles(ProjectsDir, "*.jsonl", SearchOption.AllDirectories))
+        {
+            var info = new FileInfo(file);
+            if (info.LastWriteTimeUtc < weekStart.UtcDateTime) continue;
+            if (!_transcripts.TryGetValue(file, out var t) || t.Written != info.LastWriteTimeUtc || t.Length != info.Length)
+                _transcripts[file] = t = (info.LastWriteTimeUtc, info.Length, ReadTranscript(file));
+            foreach (var u in t.Items)
+            {
+                if (u.At < weekStart || !seen.Add(u.Key)) continue;
+                week += u.Usd;
+                if (u.At >= sessionStart) session += u.Usd;
+            }
+        }
+        return (session, week);
+    }
+
+    static List<Usage> ReadTranscript(string file)
+    {
+        var items = new List<Usage>();
+        try
+        {
+            // Claude Code may be writing to it: share access, and skip a half-written last line
+            using var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            using var reader = new StreamReader(stream);
+            while (reader.ReadLine() is { } line)
+            {
+                if (!line.Contains("\"usage\"") || !line.Contains("\"assistant\"")) continue;
+                try
+                {
+                    using var doc = JsonDocument.Parse(line);
+                    if (ReadUsage(doc.RootElement) is { } u) items.Add(u);
+                }
+                catch (JsonException) { }
+            }
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+        return items;
+    }
+
+    // One API response. Streaming writes it as several lines with the same message id and usage.
+    static Usage? ReadUsage(JsonElement e)
+    {
+        if (!e.TryGetProperty("type", out var type) || type.GetString() != "assistant"
+            || !e.TryGetProperty("message", out var m) || m.ValueKind != JsonValueKind.Object
+            || !m.TryGetProperty("usage", out var u) || u.ValueKind != JsonValueKind.Object
+            || !e.TryGetProperty("timestamp", out var ts) || ts.ValueKind != JsonValueKind.String
+            || !m.TryGetProperty("model", out var model) || model.GetString() is not { } id) return null;
+        int i = Array.FindIndex(Prices, p => id.StartsWith(p.Model, StringComparison.Ordinal));
+        if (i < 0) return null;
+        var p = Prices[i];
+
+        static double N(JsonElement o, string key) =>
+            o.TryGetProperty(key, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDouble() : 0;
+        double input = N(u, "input_tokens"), output = N(u, "output_tokens"), read = N(u, "cache_read_input_tokens");
+        double write = N(u, "cache_creation_input_tokens"), write1h = 0;
+        if (u.TryGetProperty("cache_creation", out var cc) && cc.ValueKind == JsonValueKind.Object)
+        {
+            write1h = Math.Min(N(cc, "ephemeral_1h_input_tokens"), write);
+            write -= write1h;
+        }
+        double usd = (input * p.In + write * p.In * 1.25 + write1h * p.In * 2 + read * p.Read + output * p.Out) / 1e6;
+        // Haiku 5.5 costs 5x for prompts over 100K tokens; fast mode costs 2x
+        if (p.Model == "claude-haiku-5-5" && input + write + write1h + read > 100_000) usd *= 5;
+        if (u.TryGetProperty("speed", out var sp) && sp.ValueKind == JsonValueKind.String && sp.GetString() == "fast") usd *= 2;
+
+        string key = (m.TryGetProperty("id", out var mid) ? mid.GetString() : null) + ":"
+            + (e.TryGetProperty("requestId", out var rid) ? rid.GetString() : null);
+        return new Usage(key, DateTimeOffset.Parse(ts.GetString()!, CultureInfo.InvariantCulture), usd);
     }
 
     // Arc starting at 12 o'clock, clockwise, in a 48x48 box with a 5px stroke

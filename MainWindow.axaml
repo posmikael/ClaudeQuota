@@ -154,6 +154,7 @@
           </Grid>
           <TextBlock Text="Session" Foreground="White" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,4,0,0"/>
           <TextBlock x:Name="SessionReset" Classes="small"/>
+          <TextBlock x:Name="SessionCost" Classes="small" Foreground="#A8E6A1" ToolTip.Tip="What this window would cost at API list prices, from Claude Code on this computer"/>
           <TextBlock x:Name="SessionOut" Classes="small" Foreground="#FFD60A" IsVisible="False"/>
         </StackPanel>
         <StackPanel x:Name="DWeek" Grid.Column="1" HorizontalAlignment="Center">
@@ -165,6 +166,7 @@
           </Grid>
           <TextBlock Text="Week" Foreground="White" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,4,0,0"/>
           <TextBlock x:Name="WeekReset" Classes="small"/>
+          <TextBlock x:Name="WeekCost" Classes="small" Foreground="#A8E6A1" ToolTip.Tip="What this window would cost at API list prices, from Claude Code on this computer"/>
           <TextBlock x:Name="WeekOut" Classes="small" Foreground="#FFD60A" IsVisible="False"/>
         </StackPanel>
         <StackPanel x:Name="DExtra" Grid.Column="2" VerticalAlignment="Center" Margin="8,0,0,0">
